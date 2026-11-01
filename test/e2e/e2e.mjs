@@ -279,7 +279,11 @@ async function main() {
   const hostid = (await api.call('host.create', { host: HOST, groups: [{ groupid }] })).hostids[0];
   const triggers = {};
   for (const phase of ['main', 'retry', 'badkey', 'number', 'multi', 'tls1', 'tls2', 'tls3']) {
-    await api.call('item.create', { hostid, name: `SMSTunnel E2E ${phase}`, key_: `smstunnel.${phase}`, type: 2, value_type: 3 });
+    // Zabbix 8.0 limits new trapper items to {$TRAPPER.ALLOWED_HOSTS}; history.push comes from the frontend.
+    await api.call('item.create', {
+      hostid, name: `SMSTunnel E2E ${phase}`, key_: `smstunnel.${phase}`, type: 2, value_type: 3,
+      trapper_hosts: '0.0.0.0/0,::/0',
+    });
     triggers[phase] = (await api.call('trigger.create', {
       description: `SMSTunnel E2E ${phase}: value is high`, expression: `last(/${HOST}/smstunnel.${phase})>0`,
       priority: 4, manual_close: 1, opdata: 'Value: {ITEM.LASTVALUE1}',

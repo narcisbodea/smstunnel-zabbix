@@ -9,4 +9,4 @@ First version of SMSTunnel for Zabbix: a webhook media type that texts each Zabb
 - Short message templates for trigger problems, updates and recoveries, and for discovery, autoregistration, internal and service events. Texts are cut at `max_length` (320) with `...`.
 - SMSTunnel's own error messages in the Action log, with what to check; 429, 5xx and lost connections are retried (5 attempts, 30 s apart).
 - Certificate checks through `{$HTTP.TLS.VERIFY:"SMSTunnel"}`, like Zabbix's own media types (Zabbix 7.0.28+ / 7.4.12+).
-- Zabbix 7.0 export format; tested on Zabbix 7.0.32 and 7.4.16.
+- Zabbix 7.0 export format; tested on Zabbix 7.0.32, 7.4.16 and 8.0.0rc3.

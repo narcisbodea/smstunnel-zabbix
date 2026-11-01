@@ -13,7 +13,7 @@ Your phone needs the SMSTunnel app from Google Play:
 - The API key sits in a **secret macro**, never in the media type.
 - Failures show SMSTunnel's own words in Zabbix's **Action log**. Busy or unreachable moments are retried; if your phone is offline, the text waits and goes out when the phone is back online.
 
-Works with **Zabbix 7.0 LTS and later** (tested on 7.0.32 and 7.4.16). The file is in the 7.0 export format, which 7.2, 7.4 and the coming 8.0 import as well.
+Works with **Zabbix 7.0 LTS and later**: tested end to end on 7.0.32, 7.4.16 and the 8.0.0rc3 release candidate. The file is in the 7.0 export format, which 7.2, 7.4 and 8.0 import as well.
 
 ## Contents
 
@@ -29,7 +29,7 @@ Works with **Zabbix 7.0 LTS and later** (tested on 7.0.32 and 7.4.16). The file 
 
 ## Setup
 
-The menu paths are the same in Zabbix 7.0, 7.2 and 7.4.
+The menu paths are the same in Zabbix 7.0, 7.2, 7.4 and 8.0.
 
 ### 1. Your phone and an API key
 
@@ -56,8 +56,10 @@ A secret macro is hidden in the frontend once saved and is not part of any expor
 
 1. Back in **Alerts → Media types**, click **Test** in the SMSTunnel row.
 2. Replace `{ALERT.SENDTO}` in **send_to** with your own number, for example `+14155550123`.
-3. If **api_key** still reads `{$SMSTUNNEL.API.KEY}`, paste the key there (the Test window may not fill in macros; what you type is used for this test only).
+3. **api_key** reads `{$SMSTUNNEL.API.KEY}`: the Test window doesn't fill in macros, so paste the key there. What you type is used for this test only and is not saved.
 4. Click **Test**. You get *Media type test successful* and your phone sends: *Test from Zabbix: SMSTunnel is set up, and your own phone sent this text.*
+
+If you click **Test** with the macro still in **api_key**, the answer reminds you of this. Real alerts do fill in the macro.
 
 You can also type a **subject** and **message** of your own instead of `{ALERT.SUBJECT}` and `{ALERT.MESSAGE}`.
 
@@ -252,7 +254,7 @@ node test/e2e/e2e.mjs --zabbix http://127.0.0.1:8571 --key-file key.json \
 docker compose -p smst-int-zabbix70 -f test/e2e/docker-compose.yml down -v
 ```
 
-It imports the file (and checks that Zabbix exports it back unchanged), fires real problems, an update and a recovery to two users, makes the first try fail with a 503 to see the retry, and checks a wrong key, a wrong number and a "Send to" with two numbers. With `--tls-check` it also checks certificate handling against public test hosts.
+It imports the file (and checks that Zabbix exports it back unchanged), fires real problems, an update and a recovery to two users, makes the first try fail with a 503 to see the retry, and checks a wrong key, a wrong number and a "Send to" with two numbers. With `--tls-check` it also checks certificate handling against public test hosts (with a dummy key); `--import-only` stops after the import checks. Use `ZBX_VERSION=7.4` for the latest release, or `ZBX_TAG=trunk-alpine` for Zabbix's development build. The test refuses to run against `smstunnel.io`.
 
 ## License
 

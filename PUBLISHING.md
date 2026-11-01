@@ -57,7 +57,7 @@ Form: <https://www.zabbix.com/forms/integration_add> ("Propose integration"). Za
 | Updated | no | Leave empty |
 | Author | yes | NARBOWEB SRL (Narcis Bodea) |
 | Compatibility | yes | Webhook media type. Needs an Android phone with the SMSTunnel app (Google Play) and an SMSTunnel account. |
-| Zabbix versions | yes | 7.0, 7.2, 7.4 (tested on 7.0.32 and 7.4.16) |
+| Zabbix versions | yes | 7.0, 7.2, 7.4 (tested on 7.0.32 and 7.4.16; 8.0 once released, its rc3 passes) |
 | Integration description | yes | See below |
 | Captcha, "Receive regular Zabbix news and updates" | captcha yes; the checkbox may be required | — |
 
@@ -79,9 +79,11 @@ A template could go there later: for example one that watches the SMSTunnel phon
 
 ## 5. When Zabbix 8.0 LTS ships (planned for Q4 2026)
 
-1. Run the end-to-end test with the 8.0 images: `ZBX_VERSION=8.0 ZBX_WEB_PORT=8580 docker compose -p smst-int-zabbix80 -f test/e2e/docker-compose.yml up -d`, then `node test/e2e/e2e.mjs --zabbix http://127.0.0.1:8580 …` (the `trunk-alpine` images can be used before the release).
+The 8.0.0rc3 release candidate (the `trunk-alpine` images of 29 October 2026) already passes the whole end-to-end test. When 8.0.0 is out:
+
+1. Run the end-to-end test with the release images: `ZBX_VERSION=8.0 ZBX_WEB_PORT=8580 docker compose -p smst-int-zabbix80 -f test/e2e/docker-compose.yml up -d`, then `node test/e2e/e2e.mjs --zabbix http://127.0.0.1:8580 …`.
 2. Keep the file in the 7.0 export format: newer versions import it, and 7.0 LTS users can too.
-3. Update "tested on" in the README and the Zabbix versions on the zabbix.com listing.
+3. Update "tested on" in the README and the Zabbix versions on the zabbix.com listing (add 8.0).
 
 ## Releasing a new version
 

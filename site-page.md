@@ -2,7 +2,7 @@
 
 Content for a page on smstunnel.io (suggested path: `/integrations/zabbix/`). Another agent owns the site; this file only holds the words and the list of images. Screenshots are in `D:\ANDROID\integrari\zabbix-screens\`.
 
-Status: built and tested locally on Zabbix 7.0.32 and 7.4.16, **not published yet**. The download link below works once the GitHub repository and its first release exist (see `PUBLISHING.md`); until then, show "Coming soon" instead of the download button.
+Status: built and tested locally on Zabbix 7.0.32, 7.4.16 and 8.0.0rc3, **not published yet**. The download link below works once the GitHub repository and its first release exist (see `PUBLISHING.md`); until then, show "Coming soon" instead of the download button.
 
 ---
 
@@ -19,7 +19,7 @@ Replace your GSM modem with your own Android phone. Zabbix hands each alert to y
 
 Buttons: **Get it on Google Play** (badge, https://play.google.com/store/apps/details?id=io.smstunnel.app) · **Download the media type** (https://github.com/narcisbodea/smstunnel-zabbix/releases/latest/download/media_smstunnel.yaml) · **Setup guide on GitHub** (https://github.com/narcisbodea/smstunnel-zabbix)
 
-Small print under the buttons: Zabbix 7.0 LTS, 7.2 and 7.4 · webhook media type · free and open source (MIT)
+Small print under the buttons: Zabbix 7.0 LTS, 7.2, 7.4 and 8.0 · webhook media type · free and open source (MIT)
 
 ## What you get (three cards)
 
@@ -77,13 +77,14 @@ Image for the steps: `02-import.png`, `03-secret-macro.png`, `04-test-ok.png`
 | `09-message-templates.png` | Templates for every kind of event |
 | `10-options.png` | 5 attempts, 30 seconds apart |
 | `11-zabbix-7.4-media-types.png` | The same file in Zabbix 7.4 |
+| `12-zabbix-8.0rc-media-types.png` | And in the Zabbix 8.0 release candidate |
 
-Screenshots were taken in a local test setup (Zabbix in Docker, a local SMSTunnel test server).
+Screenshots were taken in a local test setup (Zabbix in Docker, a local SMSTunnel test server). In `04-test-ok.png` the key is masked and the two rows that point at the local test server (server_url, tls_verify) are hidden; `06-media-type-form.png` shows the parameters as shipped.
 
 ## FAQ
 
 **Which Zabbix versions?**
-Zabbix 7.0 LTS and later (7.2, 7.4; tested on 7.0.32 and 7.4.16). Certificates are checked on 7.0.28+ and 7.4.12+.
+Zabbix 7.0 LTS and later (7.2, 7.4, and 8.0: tested on 7.0.32, 7.4.16 and the 8.0.0rc3 release candidate). Certificates are checked on 7.0.28+ and 7.4.12+.
 
 **Can several people get the alert?**
 Yes. Each user gets their own text on their own number; one SMSTunnel media per number.
