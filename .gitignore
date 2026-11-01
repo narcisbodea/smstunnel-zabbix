@@ -1,0 +1,5 @@
+node_modules/
+*.log
+.env
+test/e2e/local-key.json
+test/e2e/out/
