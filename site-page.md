@@ -29,11 +29,11 @@ Small print under the buttons: Zabbix 7.0 LTS, 7.2 and 7.4 · webhook media type
 
 2. **Short texts made for a phone**
    Ready templates for problems, updates and recoveries, and for discovery, autoregistration, internal and service events. Long texts are cut at 320 characters.
-   Image: `08-phone-texts.png` (or the example below as text)
+   Image: `09-message-templates.png` (and the example text below)
 
 3. **Clear errors, sensible retries**
-   A wrong key or a wrong number shows SMSTunnel's own words in the Action log. A busy moment or a short outage is retried for about two minutes. If your phone is offline, the text waits and goes out when it is back.
-   Image: `07-action-log.png`
+   A wrong key or a wrong number shows SMSTunnel's own words in Zabbix. A busy moment or a short outage is retried for about two minutes. If your phone is offline, the text waits and goes out when it is back.
+   Image: `08-error-bad-key.png` or `07-action-log.png`
 
 Example text (show it as a phone screen or a code block):
 
@@ -66,16 +66,19 @@ Image for the steps: `02-import.png`, `03-secret-macro.png`, `04-test-ok.png`
 
 | File | Caption |
 | --- | --- |
-| `01-media-types-list.png` | The SMSTunnel media type in Alerts → Media types |
+| `01-media-types-list.png` | SMSTunnel next to Zabbix's built-in SMS type, which needs a GSM modem |
 | `02-import.png` | Importing media_smstunnel.yaml |
 | `03-secret-macro.png` | The API key in a secret global macro |
 | `04-test-ok.png` | The Test button: "Media type test successful" |
 | `05-user-media.png` | A user's own number in "Send to" |
 | `06-media-type-form.png` | The parameters of the media type |
-| `07-action-log.png` | Sent texts, and a wrong number explained, in the Action log |
-| `08-error-bad-key.png` | A wrong key: SMSTunnel's message in Zabbix |
+| `07-action-log.png` | Sent texts, and the failures explained, in the Action log |
+| `08-error-bad-key.png` | A wrong key: SMSTunnel's message in Monitoring → Problems |
+| `09-message-templates.png` | Templates for every kind of event |
+| `10-options.png` | 5 attempts, 30 seconds apart |
+| `11-zabbix-7.4-media-types.png` | The same file in Zabbix 7.4 |
 
-(Use the files that exist in the screenshot folder; names may differ slightly.)
+Screenshots were taken in a local test setup (Zabbix in Docker, a local SMSTunnel test server).
 
 ## FAQ
 

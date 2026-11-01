@@ -2,6 +2,7 @@
 #
 #   ZBX_VERSION=7.0 ZBX_WEB_PORT=8571 docker compose -p smst-int-zabbix70 -f test/e2e/docker-compose.yml up -d
 #   ZBX_VERSION=7.4 ZBX_WEB_PORT=8574 docker compose -p smst-int-zabbix74 -f test/e2e/docker-compose.yml up -d
+#   ZBX_TAG=trunk-alpine ZBX_WEB_PORT=8580 docker compose -p smst-int-zabbix80 -f test/e2e/docker-compose.yml up -d   (8.0 development build)
 #
 # Web UI: http://127.0.0.1:<ZBX_WEB_PORT>/ (Admin / zabbix). Tear down with `down -v`.
 services:
@@ -20,7 +21,7 @@ services:
       retries: 30
 
   server:
-    image: zabbix/zabbix-server-pgsql:alpine-${ZBX_VERSION:-7.0}-latest
+    image: zabbix/zabbix-server-pgsql:${ZBX_TAG:-alpine-${ZBX_VERSION:-7.0}-latest}
     environment:
       DB_SERVER_HOST: db
       POSTGRES_USER: zabbix
@@ -34,7 +35,7 @@ services:
         condition: service_healthy
 
   web:
-    image: zabbix/zabbix-web-nginx-pgsql:alpine-${ZBX_VERSION:-7.0}-latest
+    image: zabbix/zabbix-web-nginx-pgsql:${ZBX_TAG:-alpine-${ZBX_VERSION:-7.0}-latest}
     environment:
       ZBX_SERVER_HOST: server
       DB_SERVER_HOST: db

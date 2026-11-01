@@ -8,7 +8,10 @@
 //   node test/e2e/e2e.mjs --zabbix http://127.0.0.1:8571 --key-file key.json \
 //     [--api-url http://host.docker.internal:3101] [--local-api http://127.0.0.1:3101] \
 //     [--mongo mongodb://127.0.0.1:27018/smstunnel_app_dev] [--mongo-driver D:/ANDROID/SMSserver/package.json] \
-//     [--server-container smst-int-zabbix70-server-1] [--tls-check]
+//     [--server-container smst-int-zabbix70-server-1] [--tls-check] [--import-only]
+//
+// --tls-check adds certificate checks against public test hosts (badssl.com, with a dummy key);
+// --import-only stops after the import and export checks (handy for a development build of Zabbix).
 //
 // key.json is {"apiKey": "..."} (or set SMSTUNNEL_API_KEY). Use a key of a local SMSTunnel test server only:
 // every text in this test goes to --api-url. Numbers used: +14155550123 and +14155550124.
@@ -29,6 +32,13 @@ const args = parseArgs(process.argv.slice(2));
 const ZABBIX_URL = args.zabbix || 'http://127.0.0.1:8571';
 const API_URL = args['api-url'] || 'http://host.docker.internal:3101';
 const LOCAL_API = args['local-api'] || 'http://127.0.0.1:3101';
+// Real texts must never go out from a test: refuse the production service.
+for (const url of [API_URL, LOCAL_API]) {
+  if (/^https?:\/\/([^/]*\.)?smstunnel\.io(?=[:/]|$)/i.test(url)) {
+    console.error(`Refusing to run against ${url}: point --api-url and --local-api at a local SMSTunnel test server.`);
+    process.exit(2);
+  }
+}
 const CONTAINER = args['server-container'] || '';
 const STUB_PORT = Number(args['stub-port'] || 8579);
 const NUMBER_ADMIN = '+14155550123';
@@ -257,6 +267,7 @@ async function main() {
   check('imported options: 5 attempts, 30s apart, 30s timeout',
     mt.maxattempts === '5' && mt.attempt_interval === '30s' && mt.timeout === '30s',
     `${mt.maxattempts} / ${mt.attempt_interval} / ${mt.timeout}`);
+  if (args['import-only']) return;
 
   // 2. Point it at the test server; the key goes into a secret global macro.
   await setParams({ server_url: API_URL });

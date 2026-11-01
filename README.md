@@ -8,7 +8,7 @@ Your phone needs the SMSTunnel app from Google Play:
 
 <a href="https://play.google.com/store/apps/details?id=io.smstunnel.app"><img src="https://smstunnel.io/google-play-badge.png" alt="Get it on Google Play" height="56"></a>
 
-- **One text per alert**, to the number in each user's **Send to** field. Several people means several user media, each with its own number.
+- **One text per alert and per person**, to the number in each Zabbix user's **Send to** field: everyone gets their own text on their own number.
 - Short, phone-sized texts for problems, updates and recoveries (and for discovery, autoregistration, internal and service events).
 - The API key sits in a **secret macro**, never in the media type.
 - Failures show SMSTunnel's own words in Zabbix's **Action log**. Busy or unreachable moments are retried; if your phone is offline, the text waits and goes out when the phone is back online.
@@ -87,7 +87,7 @@ When a problem starts, every user in the operation gets a text on their own numb
 | `subject` | `{ALERT.SUBJECT}` | First line of the text. |
 | `message` | `{ALERT.MESSAGE}` | The rest of the text. |
 | `max_length` | `320` | Longer texts are cut and end with `...` (plain dots keep the text in the 160-character SMS alphabet). Up to 1600. |
-| `device_id` | `{$SMSTUNNEL.DEVICE.ID}` | Optional: send through one particular phone. Copy its ID from **Phones** in your dashboard. If the macro isn't defined, SMSTunnel picks your phone. |
+| `device_id` | `{$SMSTUNNEL.DEVICE.ID}` | Optional: send through one particular phone, when your account has several. Copy its ID from **Phones** in your dashboard. If the macro isn't defined, your linked phone sends the text. |
 | `default_country_code` | `{$SMSTUNNEL.COUNTRY.CODE}` | Optional: a calling code such as `40` or `+44`. It completes numbers written without `+` or `00` and takes precedence over the phone's own setting. International numbers don't need it. |
 | `tls_verify` | `{$HTTP.TLS.VERIFY:"SMSTunnel"}` | Certificate check, the same switch Zabbix's own media types use: `full` (default when the macro isn't defined), `peer` (skip the host name check) or `none`. |
 
@@ -148,7 +148,7 @@ Zabbix itself decides two things worth knowing: *Notify all involved* does not t
 
 ## Troubleshooting
 
-Look in **Reports → Action log** (column *Info*), or hover the **Actions** icon of the problem in **Monitoring → Problems**. Every message starts with `SMSTunnel:`.
+Look in **Reports → Action log** (column *Info*), or in **Monitoring → Problems**: click the problem's icon in the **Actions** column and point at the red **i** next to *Failed*. Every message starts with `SMSTunnel:`.
 
 | What Zabbix shows | What to do |
 | --- | --- |
