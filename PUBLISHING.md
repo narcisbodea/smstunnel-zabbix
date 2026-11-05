@@ -1,92 +1,95 @@
 # Publishing SMSTunnel for Zabbix
 
-Nothing has been published yet. The order below matters: the zabbix.com listing and the media type's description link to the GitHub repository, so it has to exist first.
+## Where it is published
 
-| Where | What it gives | Who can do it | Review |
-| --- | --- | --- | --- |
-| GitHub `narcisbodea/smstunnel-zabbix` | The home of the media type: README, file, releases | You (`gh` signed in as `narcisbodea`) | None |
-| zabbix.com/integrations ("Propose integration") | A **Vendor** listing next to SMSEagle, Pushover, Telegram… | You, as NARBOWEB SRL (the form is for software vendors) | Not stated by Zabbix; plan for weeks, and a reply by email |
-| zabbix/community-templates | Not for media types (templates only) | — | — |
-| smstunnel.io integration page | The page in `site-page.md` | The site's owner | — |
+| Where | State | What's next |
+| --- | --- | --- |
+| GitHub `narcisbodea/smstunnel-zabbix` | Public since 1 November 2026, with release v1.0.0 (`media_smstunnel.yaml`) | Release v1.1.0, with both files (below) |
+| smstunnel.io/integrations/zabbix/ | Live since 1.0.0 | The 1.1.0 changes, listed at the top of `site-page.md` |
+| Dashboard, **Apps → Add an app → Zabbix** | Live; it gives the 7.0 steps and the 7.0 download | Add the 6.0 file and 6.0's menu paths after the release (below) |
+| zabbix.com/integrations | Not submitted | The owner sends the form: everything to paste is in [`LISTING.md`](LISTING.md) |
+| Zabbix's own repository (ships with Zabbix) | Not asked | Only through Zabbix's Integration Team; see [Shipping with Zabbix](#shipping-with-zabbix) |
+| zabbix/community-templates | Not used | Meant for individuals' templates; see [Shipping with Zabbix](#shipping-with-zabbix) |
 
-## 1. GitHub repository
+## Release v1.1.0
 
-Before pushing, from this folder:
+Everything is committed on `main`; nothing has been pushed. On 5 November 2026 the end-to-end test passed 34 of 34 on Zabbix 6.0.49, 7.0.32, 7.4.16 and 8.0.0, against a local SMSTunnel test server built from 17acebf. From this folder:
 
 ```bash
 npm install
-npm test                                  # YAML up to date + unit tests
+npm test                                                     # both files up to date, 36 unit tests
 git grep -n "sk_live_[A-Za-z0-9]" || echo "no keys in the repository"
+git push origin main
+gh release create v1.1.0 media_smstunnel.yaml media_smstunnel_6.0.yaml --target main \
+  --title "SMSTunnel for Zabbix 1.1.0" --notes-file release-notes/v1.1.0.md
 ```
 
-Then create the repository, push, and publish the first release with the import file attached:
+The download links are then:
 
-```bash
-gh repo create narcisbodea/smstunnel-zabbix --public --source . --remote origin \
-  --description "SMSTunnel for Zabbix: text alerts from your own Android phone and your own number (webhook media type)" \
-  --homepage "https://smstunnel.io"
-git push -u origin main
-gh repo edit narcisbodea/smstunnel-zabbix \
-  --add-topic zabbix --add-topic zabbix-webhook --add-topic zabbix-media-type --add-topic sms \
-  --add-topic android --add-topic alerting --add-topic monitoring --add-topic smstunnel
-gh release create v1.0.0 media_smstunnel.yaml --title "SMSTunnel for Zabbix 1.0.0" --notes-file CHANGELOG.md
-```
+- https://github.com/narcisbodea/smstunnel-zabbix/releases/latest/download/media_smstunnel.yaml (Zabbix 7.0 and later)
+- https://github.com/narcisbodea/smstunnel-zabbix/releases/latest/download/media_smstunnel_6.0.yaml (Zabbix 6.0 LTS)
 
-The direct download link for users is then
-`https://github.com/narcisbodea/smstunnel-zabbix/releases/latest/download/media_smstunnel.yaml`.
+The asset names must stay exactly these. The README, the site, the dashboard and the zabbix.com listing all use them.
 
-## 2. zabbix.com integrations page (Vendor listing)
+## Dashboard, after the release
 
-Zabbix lists third-party media types on <https://www.zabbix.com/integrations> (Zabbix Share, `share.zabbix.com`, now redirects there). Vendor entries such as SMSEagle show "From the vendor", link to the vendor's GitHub repository, and carry Zabbix's note that vendor and community integrations are not verified by Zabbix.
+`smstunnel-app/apps/dashboard/src/pages/apps/setups.ts` links only to `media_smstunnel.yaml`, and the Zabbix steps in `src/locales/en.json` and `ro.json` (`appKinds.zabbix.setup`) give 7.0's menus only. Suggested change, once v1.1.0 is out (the 6.0 link doesn't work before then):
 
-Form: <https://www.zabbix.com/forms/integration_add> ("Propose integration"). Zabbix says it is "intended for software vendors interested in a technology partnership with Zabbix"; individual developers are sent to the community-templates repository instead. NARBOWEB SRL is the vendor of SMSTunnel, so this is the right form. Suggested answers:
+- `setups.ts`: a second link in the `import` step, to `${GITHUB}/smstunnel-zabbix/releases/latest/download/media_smstunnel_6.0.yaml`, with the text `appKinds.zabbix.setup.download60`.
+- `en.json`:
+  - `import`: "Download the media type. In Zabbix, open Alerts, Media types (6.0: Administration, Media types), click Import and choose the file."
+  - `download60`: "For Zabbix 6.0: media_smstunnel_6.0.yaml"
+  - `macro`: "Open Administration, Macros (6.0: Administration, General, Macros) and add the macro {$SMSTUNNEL.API.KEY} with this value. Set its type to Secret text and click Update:"
+  - `test`: "In Alerts, Media types (6.0: Administration, Media types), click Test in the SMSTunnel row. Put your number in send_to and the key in api_key (the test doesn't fill in macros), then click Test."
+  - `users`: "Give each user their number in Users, Users, Media (6.0: Administration, Users), Type SMSTunnel, and send to them from a trigger action."
+- `ro.json`:
+  - `import`: "Descarcă media type-ul. În Zabbix, deschide Alerts, Media types (6.0: Administration, Media types), apasă Import și alege fișierul."
+  - `download60`: "Pentru Zabbix 6.0: media_smstunnel_6.0.yaml"
+  - The other three steps take the same bracketed 6.0 paths.
+- `prompts.ts`, the Zabbix lines: "Zabbix 7.0 or later" becomes "Zabbix 7.0 or later, or media_smstunnel_6.0.yaml for Zabbix 6.0 (Administration, Media types)".
 
-| Field | Required | Suggested answer |
-| --- | --- | --- |
-| Company name | yes | NARBOWEB SRL |
-| First name / Last name | yes | Narcis / Bodea |
-| Job title | yes (list) | The title that fits (e.g. *Chief Executive Officer*) |
-| Business email address | yes | contact@narboweb.ro |
-| Phone number | yes | Your business number |
-| Country / Territory | yes | Romania |
-| Integration title | yes | SMSTunnel |
-| Company description | yes | NARBOWEB SRL makes SMSTunnel (https://smstunnel.io), which lets people's own apps and tools send texts from their own Android phone and their own number. |
-| Logo | optional, .svg or .png, up to 50 KB | `D:\ANDROID\smstunnel-landing\public\logo.svg` (8.3 KB) |
-| Source | yes | https://github.com/narcisbodea/smstunnel-zabbix |
-| Created | yes | The date of the v1.0.0 release (e.g. 2026-11) |
-| Updated | no | Leave empty |
-| Author | yes | NARBOWEB SRL (Narcis Bodea) |
-| Compatibility | yes | Webhook media type. Needs an Android phone with the SMSTunnel app (Google Play) and an SMSTunnel account. |
-| Zabbix versions | yes | 7.0, 7.2, 7.4 (tested on 7.0.32 and 7.4.16; 8.0 once released, its rc3 passes) |
-| Integration description | yes | See below |
-| Captcha, "Receive regular Zabbix news and updates" | captcha yes; the checkbox may be required | — |
+## zabbix.com integrations page
 
-Integration description (keep the wording: own phone, own number, one text per user):
+[`LISTING.md`](LISTING.md) has every field of the "Propose integration" form (https://www.zabbix.com/forms/integration_add) ready to paste, the logo in [`listing/`](listing/), and what happens next. In short:
 
-> SMSTunnel for Zabbix texts each Zabbix user's own "Send to" number from your own Android phone and your own number. Zabbix hands every alert to your SMSTunnel account and the phone sends it from its own SIM, so the on-call person sees a number they know and can reply to. No GSM modem or serial port on the Zabbix server. Import one YAML file, put the API key in a secret macro, and give each user an SMSTunnel media with their number. Includes short, phone-sized templates for problems, updates and recoveries; SMSTunnel's error messages appear in the Action log, and busy moments are retried.
+- There is no partner status, fee or account to set up. Only a business phone number is missing from the texts.
+- Zabbix states no review time; recent vendor entries appeared after about 2 to 5 weeks.
+- The entry will be a "From the vendor" listing like SMSEagle's, with Zabbix's note that vendor integrations are not verified by Zabbix.
 
-Zabbix does not say how long the review takes or what happens next; expect an email from their partner team. They may ask about a technology partnership.
+## Shipping with Zabbix
 
-## 3. Zabbix community templates: not the place
+The question is whether the media type can go into Zabbix's own repository (`templates/media/`, and the default data of new installations), so that it ships with Zabbix. It can't be done by sending code today. Checked on 5 November 2026:
 
-<https://github.com/zabbix/community-templates> takes **templates** only: one folder per template named `template_*`, a `7.0`-style version folder, MIT license (no third-party licenses). A media type is not a template, so there is no pull request to make there for this repository.
+1. **No pull requests.**
+   - The GitHub mirror (github.com/zabbix/zabbix) has merged none of its 189 pull requests. One of the repository's contributors answered one of them with "PR is ignoring. Please open ticket here https://support.zabbix.com".
+   - git.zabbix.com has no sign-up for outsiders.
+   - The old contributor route was ZBXCTR tickets with `contrib/ZBXCTR-…` branches. It is being retired: "we are retiring ZBXCTR project … please create a ZBXNEXT ticket" (ZBXCTR-5, 12 June 2025). zabbix.com/developers still describes it.
+2. **A ZBXNEXT feature request is the way in.** You open one on support.zabbix.com (it needs an account) and ask the Integration Team to add an SMSTunnel media type. A Zabbix engineer then writes or rewrites it, on Zabbix's shared webhook classes, for the branches in support.
+   - The last vendor-written media types were SIGNL4 and iLert in 2020. Since September 2020, every change under `templates/media` was made by Zabbix staff.
+   - Recent vendor requests got no code accepted. All Quiet's ZBXNEXT-9940 (April 2025) is still open, and All Quiet has only a vendor listing. Plivo and Twilio's ZBXNEXT-10099 was closed "Won't fix" in November 2025, with a pointer to community-templates.
+3. **A contributor licence agreement**, if Zabbix takes code from NARBOWEB:
+   - a corporate CLA (CCLA), signed by hand by someone who can sign for the company;
+   - an individual CLA (ICLA) for each person who wrote code, after registering on support.zabbix.com for a Zabbix account ID.
+   - The original goes by post or courier, and a scan to contribution@zabbix.com. Digital signatures aren't accepted.
+   - Both CLAs say "each of Your Contributions is Your original creation". Zabbix has no written policy on AI-assisted contributions (none in the repository, the guidelines, the CLAs or the forum rules that could be read). The media type was largely written with an AI assistant, so decide on that wording before signing.
+4. **What shipping would give:**
+   - new installations of Zabbix get it in their default media types (32 webhooks today);
+   - upgraded installations don't, and import it as now.
+   - Zabbix credits outside authors by handle in its ChangeLog, but not in the media type's README.
+   - New media types do reach supported LTS branches, not only the next major version. 6.0 is in limited support now, so it would be 7.0 LTS and 8.0 LTS.
 
-A template could go there later: for example one that watches the SMSTunnel phone itself (online, last seen) through the API, so Zabbix warns by email when the phone that sends the texts is offline. See the open questions in the hand-over notes.
+**Recommended:** the vendor listing first. A ZBXNEXT request can follow once the listing is live, linking to it and to this repository; votes on the ticket help. Nothing has been opened.
 
-## 4. smstunnel.io
+**community-templates** (github.com/zabbix/community-templates) is for individuals, MIT only, and its guidelines describe templates. Its automated checks also know a `mediatype_…` folder, and Zabbix sent one webhook author there, but no media type has been merged yet. A vendor listing suits NARBOWEB better.
 
-`site-page.md` holds the text for an integration page (for example `https://smstunnel.io/integrations/zabbix/`). The site is maintained separately; hand the file to its owner. The dashboard has no *Zabbix* entry under **Apps → Add an app** yet, so the guide tells users to pick **Script or server**; a Zabbix entry with a link to the guide (like the Uptime Kuma one) would be a small follow-up there.
+## Zabbix 8.0 LTS
 
-## 5. When Zabbix 8.0 LTS ships (planned for Q4 2026)
-
-The 8.0.0rc3 release candidate (the `trunk-alpine` images of 29 October 2026) already passes the whole end-to-end test. When 8.0.0 is out:
-
-1. Run the end-to-end test with the release images: `ZBX_VERSION=8.0 ZBX_WEB_PORT=8580 docker compose -p smst-int-zabbix80 -f test/e2e/docker-compose.yml up -d`, then `node test/e2e/e2e.mjs --zabbix http://127.0.0.1:8580 …`.
-2. Keep the file in the 7.0 export format: newer versions import it, and 7.0 LTS users can too.
-3. Update "tested on" in the README and the Zabbix versions on the zabbix.com listing (add 8.0).
+Zabbix 8.0.0 came out on 5 November 2026, and the end-to-end test passes on it (34 of 34). To run it again: `ZBX_VERSION=8.0 ZBX_WEB_PORT=8580 docker compose -p smst-int-zabbix80 -f test/e2e/docker-compose.yml up -d`, then `node test/e2e/e2e.mjs --zabbix http://127.0.0.1:8580 … --server-container smst-int-zabbix80-server-1`. Keep `media_smstunnel.yaml` in the 7.0 export format: 7.0 LTS and every newer version import it.
 
 ## Releasing a new version
 
-1. Change `src/smstunnel.js` (and `src/mediatype.mjs`), update `version` in both, `package.json` and `CHANGELOG.md`.
-2. `npm run build && npm test`, then the end-to-end test on 7.0 and the latest release.
-3. Commit, tag and `gh release create vX.Y.Z media_smstunnel.yaml --notes-file CHANGELOG.md`.
+1. Change `src/smstunnel.js` and `src/mediatype.mjs`. Update `VERSION` and `RELEASE_DATE` in `src/mediatype.mjs` (the date is the 6.0 file's export date), `version` in `src/smstunnel.js`, and `package.json`.
+2. Write the `CHANGELOG.md` entry and `release-notes/vX.Y.Z.md`.
+3. Run `npm run build && npm test`.
+4. Run `test/offline/check-with-zabbix.php` against the latest 6.0, 7.0 and 8.0 releases (see the README's Development section). Run the end-to-end test on 6.0, 7.0 and the latest release.
+5. Commit, push, and run `gh release create vX.Y.Z media_smstunnel.yaml media_smstunnel_6.0.yaml --notes-file release-notes/vX.Y.Z.md`.

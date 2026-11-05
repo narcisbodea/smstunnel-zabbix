@@ -13,7 +13,14 @@ Your phone needs the SMSTunnel app from Google Play:
 - The API key sits in a **secret macro**, never in the media type.
 - Failures show SMSTunnel's own words in Zabbix's **Action log**. Busy or unreachable moments are retried; if your phone is offline, the text waits and goes out when the phone is back online.
 
-Works with **Zabbix 7.0 LTS and later**: tested end to end on 7.0.32, 7.4.16 and the 8.0.0rc3 release candidate. The file is in the 7.0 export format, which 7.2, 7.4 and 8.0 import as well.
+Works with **Zabbix 6.0 LTS, 7.0 LTS and later**. Pick the file for your Zabbix; both hold the same media type:
+
+| Your Zabbix | Import this file |
+| --- | --- |
+| 7.0 LTS, 7.2, 7.4, 8.0 LTS | [`media_smstunnel.yaml`](media_smstunnel.yaml) |
+| 6.0 LTS | [`media_smstunnel_6.0.yaml`](media_smstunnel_6.0.yaml) |
+
+Zabbix shows its version at the bottom of every page. Tested end to end on Zabbix 6.0.49, 7.0.32, 7.4.16 and 8.0.0.
 
 ## Contents
 
@@ -29,7 +36,7 @@ Works with **Zabbix 7.0 LTS and later**: tested end to end on 7.0.32, 7.4.16 and
 
 ## Setup
 
-The menu paths are the same in Zabbix 7.0, 7.2, 7.4 and 8.0.
+The menu paths are the same in Zabbix 7.0, 7.2, 7.4 and 8.0. Zabbix 6.0 has some of them elsewhere; those are given in brackets as *6.0: …*.
 
 ### 1. Your phone and an API key
 
@@ -40,21 +47,21 @@ The Zabbix server (not a Zabbix proxy) sends the alerts, so it needs to reach `h
 
 ### 2. Import the media type
 
-1. Download [`media_smstunnel.yaml`](media_smstunnel.yaml).
-2. In Zabbix, go to **Alerts → Media types** and click **Import** (top right).
+1. Download [`media_smstunnel.yaml`](media_smstunnel.yaml), or [`media_smstunnel_6.0.yaml`](media_smstunnel_6.0.yaml) for Zabbix 6.0.
+2. In Zabbix, go to **Alerts → Media types** (*6.0: Administration → Media types*) and click **Import** (top right).
 3. Choose the file and click **Import**. A media type named **SMSTunnel** appears in the list.
 
 ### 3. Put the API key in a secret macro
 
-1. Go to **Administration → Macros**.
+1. Go to **Administration → Macros** (*6.0: Administration → General → Macros*).
 2. Add the macro `{$SMSTUNNEL.API.KEY}`, paste the key as its value, and set the type next to the value to **Secret text**.
 3. Click **Update**.
 
-A secret macro is hidden in the frontend once saved and is not part of any export. If you keep secrets in HashiCorp Vault or CyberArk, choose **Vault secret** instead and enter the secret's path.
+A secret macro is hidden in the frontend once saved and is not part of any export. If you keep secrets in HashiCorp Vault (or CyberArk, on Zabbix 6.2 and later), choose **Vault secret** instead and enter the secret's path.
 
 ### 4. Test it
 
-1. Back in **Alerts → Media types**, click **Test** in the SMSTunnel row.
+1. Back in **Alerts → Media types** (*6.0: Administration → Media types*), click **Test** in the SMSTunnel row.
 2. Replace `{ALERT.SENDTO}` in **send_to** with your own number, for example `+14155550123`.
 3. **api_key** reads `{$SMSTUNNEL.API.KEY}`: the Test window doesn't fill in macros, so paste the key there. What you type is used for this test only and is not saved.
 4. Click **Test**. You get *Media type test successful* and your phone sends: *Test from Zabbix: SMSTunnel is set up, and your own phone sent this text.*
@@ -65,7 +72,7 @@ You can also type a **subject** and **message** of your own instead of `{ALERT.S
 
 ### 5. Give each user their own number
 
-1. Go to **Users → Users** and open a user.
+1. Go to **Users → Users** (*6.0: Administration → Users*) and open a user.
 2. On the **Media** tab click **Add**, choose **Type: SMSTunnel** and put the user's own number in **Send to**, in international format (`+14155550123`).
 3. Keep **When active** and **Use if severity** as you want them, click **Add**, then **Update**.
 
@@ -73,7 +80,7 @@ One number per media: for a second number, add a second SMSTunnel media. The use
 
 ### 6. Send alerts with an action
 
-1. Go to **Alerts → Actions → Trigger actions** and create an action (or edit one, such as *Report problems to Zabbix administrators*).
+1. Go to **Alerts → Actions → Trigger actions** (*6.0: Configuration → Actions → Trigger actions*) and create an action (or edit one, such as *Report problems to Zabbix administrators*).
 2. On **Operations**, add an operation: **Send to users** or **Send to user groups**, **Send only to: SMSTunnel**.
 3. Add **Recovery operations** and **Update operations** (*Notify all involved*) if you want those texts too.
 4. Leave **Custom message** off to use the templates below. Click **Add** or **Update**, and check that the action is enabled.
@@ -91,7 +98,7 @@ When a problem starts, every user in the operation gets a text on their own numb
 | `max_length` | `320` | Longer texts are cut and end with `...` (plain dots keep the text in the 160-character SMS alphabet). Up to 1600. |
 | `device_id` | `{$SMSTUNNEL.DEVICE.ID}` | Optional: send through one particular phone, when your account has several. Copy its ID from **Phones** in your dashboard. If the macro isn't defined, your linked phone sends the text. |
 | `default_country_code` | `{$SMSTUNNEL.COUNTRY.CODE}` | Optional: a calling code such as `40` or `+44`. It completes numbers written without `+` or `00` and takes precedence over the phone's own setting. International numbers don't need it. |
-| `tls_verify` | `{$HTTP.TLS.VERIFY:"SMSTunnel"}` | Certificate check, the same switch Zabbix's own media types use: `full` (default when the macro isn't defined), `peer` (skip the host name check) or `none`. |
+| `tls_verify` | `{$HTTP.TLS.VERIFY:"SMSTunnel"}` | Certificate check, the same switch Zabbix 7.0's own media types use: `full` (default when the macro isn't defined), `peer` (skip the host name check) or `none`. |
 
 Optional parameters you can add yourself on the media type's form:
 
@@ -154,7 +161,7 @@ Look in **Reports → Action log** (column *Info*), or in **Monitoring → Probl
 
 | What Zabbix shows | What to do |
 | --- | --- |
-| `no API key. Add the global macro {$SMSTUNNEL.API.KEY} …` | Add the macro in **Administration → Macros** (the name must match exactly). In the Test window, paste the key into **api_key**. |
+| `no API key. Add the global macro {$SMSTUNNEL.API.KEY} …` | Add the macro in **Administration → Macros** (*6.0: Administration → General → Macros*); the name must match exactly. In the Test window, paste the key into **api_key**. |
 | `the API key was not accepted (HTTP 401: Invalid or expired API key) …` | The key is wrong or was deleted. Create a new one under **Apps** in your dashboard and update the macro. Alerts made before the fix keep the old key for their retries; new alerts use the new key. |
 | `the text was refused (HTTP 403: … [PERMISSION_REQUIRED])` | The key can't send texts. Create a key under **Apps → Add an app**. Other 403 messages explain a plan or account limit. |
 | `"Send to" is not a phone number (…)` / `the text was not accepted (HTTP 400: Phone number must …)` | Fix the user's **Send to**: one number in international format, e.g. `+14155550123`. |
@@ -170,7 +177,9 @@ For more detail, raise the alerter log level on the Zabbix server for a few minu
 
 ## Updating
 
-Import the new `media_smstunnel.yaml` the same way, with **Update existing** ticked for media types. Your macros (key, phone ID, country code) stay as they are. The parameters and message templates are replaced with the new version's, so note any template you changed before you import.
+Import the new file the same way (`media_smstunnel.yaml`, or `media_smstunnel_6.0.yaml` on Zabbix 6.0), with **Update existing** ticked for media types. Your macros (key, phone ID, country code) stay as they are. The parameters and message templates are replaced with the new version's, so note any template you changed before you import.
+
+When you upgrade Zabbix itself from 6.0 to 7.0 or later, the SMSTunnel media type comes along and keeps working. Import `media_smstunnel.yaml` afterwards (with **Update existing**) so that its messages name the new version's menus.
 
 To remove it: delete the SMSTunnel media type, the `{$SMSTUNNEL.*}` macros, and the key under **Apps** in your dashboard.
 
@@ -180,7 +189,7 @@ To remove it: delete the SMSTunnel media type, the `{$SMSTUNNEL.*}` macros, and 
 - Deleting the key under **Apps** in your dashboard cuts Zabbix off at once. A key made with **Apps → Add an app** can send texts and check their status; it reads received texts only if you allowed that.
 - The script never logs the key and never puts it in an error message. At debug level it logs the length of the text and a shortened number.
 - Zabbix itself handles the resolved key in two places, as it does for every webhook: it keeps each alert's parameters in its database (the `alerts` table; the frontend and the API don't show them), and at DebugLevel 4 it writes them to the server log. Keep the default log level, treat database access and backups as sensitive, and replace the key if they leak.
-- Certificates are checked (`full`) on Zabbix 7.0.28+ and 7.4.12+. Older Zabbix releases don't check certificates for any webhook; upgrading is the fix.
+- Certificates are checked (`full`) on Zabbix 6.0.47+, 7.0.28+, 7.4.12+ and 8.0. Older Zabbix releases don't check certificates for any webhook; upgrading is the fix.
 
 ## Build it with an AI assistant
 
@@ -197,16 +206,19 @@ The phone runs the SMSTunnel app from Google Play
 What I want: [describe what should send a text, to whom, and when]
 
 How the Zabbix integration works ("SMSTunnel for Zabbix", https://github.com/narcisbodea/smstunnel-zabbix):
-- Install: Alerts > Media types > Import > media_smstunnel.yaml (Zabbix 7.0 or later). It adds a
+- Install: Alerts > Media types > Import > media_smstunnel.yaml (Zabbix 7.0 or later), or
+  Administration > Media types > Import > media_smstunnel_6.0.yaml (Zabbix 6.0 LTS). It adds a
   webhook media type "SMSTunnel".
 - The API key goes into the global macro {$SMSTUNNEL.API.KEY}, type "Secret text"
-  (Administration > Macros). Optional macros: {$SMSTUNNEL.DEVICE.ID} (send through one phone) and
-  {$SMSTUNNEL.COUNTRY.CODE} (e.g. 40; completes numbers written without + or 00 and takes
-  precedence over the phone's own setting).
+  (Administration > Macros; on 6.0 Administration > General > Macros). Optional macros:
+  {$SMSTUNNEL.DEVICE.ID} (send through one phone) and {$SMSTUNNEL.COUNTRY.CODE} (e.g. 40; completes
+  numbers written without + or 00 and takes precedence over the phone's own setting).
 - Each Zabbix user gets a media of type SMSTunnel with one phone number in "Send to"
-  (Users > Users > Media). One text per alert and per media; several numbers = several media.
-- Actions (Alerts > Actions > Trigger actions) send to users or user groups through SMSTunnel.
-  The text is {ALERT.SUBJECT} + a line break + {ALERT.MESSAGE}, cut at max_length (320) with "...".
+  (Users > Users > Media; on 6.0 Administration > Users). One text per alert and per media; several
+  numbers = several media.
+- Actions (Alerts > Actions > Trigger actions; on 6.0 Configuration > Actions) send to users or user
+  groups through SMSTunnel. The text is {ALERT.SUBJECT} + a line break + {ALERT.MESSAGE}, cut at
+  max_length (320) with "...".
 - Media type options: 5 attempts, 30 s apart. Errors show in Reports > Action log.
 
 SMSTunnel API facts (if you call it directly, e.g. from a script):
@@ -238,23 +250,41 @@ Send only texts that people expect from you, such as alerts to yourself, your te
 
 ## Development
 
-The script is [`src/smstunnel.js`](src/smstunnel.js) (plain ES5, for Zabbix's Duktape engine); the media type's other fields are in [`src/mediatype.mjs`](src/mediatype.mjs). `npm run build` writes `media_smstunnel.yaml` from both, in the same style as Zabbix's own export.
+The script is [`src/smstunnel.js`](src/smstunnel.js) (plain ES5, for Zabbix's Duktape engine); the media type's other fields are in [`src/mediatype.mjs`](src/mediatype.mjs). `npm run build` writes both files from them, in the same style as Zabbix's own export: `media_smstunnel.yaml` in the 7.0 export format and `media_smstunnel_6.0.yaml` in the 6.0 one (with 6.0's export date and menu paths; everything else is the same).
 
 ```bash
 npm install
-npm test        # checks the YAML is up to date, then runs the unit tests
+npm test        # checks both files are up to date, then runs the unit tests
 ```
+
+### Check a file with Zabbix's own code
+
+[`test/offline/check-with-zabbix.php`](test/offline/check-with-zabbix.php) runs a file through the import and export code of a Zabbix release, with no server and no database: Zabbix's YAML reader, its import schema and converters, the field rules of `mediatype.create`, and the export, compared byte for byte with the file (6.0's export date aside). It needs PHP with mbstring (PHP 8.2 works with 6.0, 7.0 and 8.0) and the `ui` folder of that Zabbix release:
+
+```bash
+git clone --depth 1 --filter=blob:none --sparse --branch 6.0.49 https://github.com/zabbix/zabbix.git zabbix-6.0
+git -C zabbix-6.0 sparse-checkout set ui/include ui/vendor
+php -d extension=mbstring test/offline/check-with-zabbix.php zabbix-6.0/ui media_smstunnel_6.0.yaml
+php -d extension=mbstring test/offline/check-with-zabbix.php zabbix-6.0/ui media_smstunnel.yaml --expect-unsupported
+```
+
+The same works with the `7.0.32` or `8.0.0` tags and either file (newer Zabbix converts the 6.0 one on import).
+
+### End to end
 
 The end-to-end test runs the media type in a real Zabbix (server, web and PostgreSQL in Docker) against a local SMSTunnel test server, never against smstunnel.io:
 
 ```bash
 ZBX_VERSION=7.0 ZBX_WEB_PORT=8571 docker compose -p smst-int-zabbix70 -f test/e2e/docker-compose.yml up -d
 node test/e2e/e2e.mjs --zabbix http://127.0.0.1:8571 --key-file key.json \
-  --api-url http://host.docker.internal:3101 --server-container smst-int-zabbix70-server-1
+  --api-url http://host.docker.internal:3101 --local-api http://127.0.0.1:3101 \
+  --mongo mongodb://127.0.0.1:27018/smstunnel_zabbix_e2e_test --server-container smst-int-zabbix70-server-1
 docker compose -p smst-int-zabbix70 -f test/e2e/docker-compose.yml down -v
 ```
 
-It imports the file (and checks that Zabbix exports it back unchanged), fires real problems, an update and a recovery to two users, makes the first try fail with a 503 to see the retry, and checks a wrong key, a wrong number and a "Send to" with two numbers. With `--tls-check` it also checks certificate handling against public test hosts (with a dummy key); `--import-only` stops after the import checks. Use `ZBX_VERSION=7.4` for the latest release, or `ZBX_TAG=trunk-alpine` for Zabbix's development build. The test refuses to run against `smstunnel.io`.
+It imports the file for that Zabbix version (and checks that Zabbix exports it back unchanged), fires real problems, an update and a recovery to two users, makes the first try fail with a 503 to see the retry, and checks a wrong key, a wrong number and a "Send to" with two numbers. With `--tls-check` it also checks certificate handling against public test hosts (with a dummy key); `--import-only` stops after the import checks. `--mongo` is the test server's database, read only to see the texts it accepted; it must be a `*_test` database.
+
+Use `ZBX_VERSION=6.0` (port 8560, project `smst-int-zabbix60`) for Zabbix 6.0 LTS: the test then imports `media_smstunnel_6.0.yaml`, and sends its values through the server's trapper port, since 6.0 has no `history.push`. Use `ZBX_VERSION=7.4` or `ZBX_VERSION=8.0` for the newer releases, or `ZBX_TAG=trunk-alpine` for Zabbix's development build. The test refuses to run against `smstunnel.io`.
 
 ## License
 
