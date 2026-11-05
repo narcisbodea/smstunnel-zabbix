@@ -8,14 +8,19 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as acorn from 'acorn';
 import yaml from 'js-yaml';
-import { buildYaml } from '../scripts/build.mjs';
+import { TARGETS, buildYaml, scriptFor } from '../scripts/build.mjs';
+import { RELEASE_DATE, VERSION } from '../src/mediatype.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SCRIPT = readFileSync(join(root, 'src', 'smstunnel.js'), 'utf8');
-const KEY = 'sk_live_unit_test_key_0123456789abcdef';
+// A made-up key, put together from pieces so that no key-shaped string sits in the repository.
+const KEY = ['sk', 'live', 'unit', 'test', 'key', '0123456789abcdef'].join('_');
+const [V70, V60] = TARGETS;
+const loadFile = (target) => readFileSync(join(root, target.file), 'utf8').replace(/\r\n/g, '\n');
 
 // Runs the script once, as Zabbix does: `value` is the JSON of the parameters; the script returns or throws.
-function run(params, reply = {}) {
+// `script` is this repository's own webhook script (src/smstunnel.js, or the 6.0 file's copy of it).
+function run(params, reply = {}, script = SCRIPT) {
   const calls = [];
   const logs = [];
 
@@ -46,7 +51,7 @@ function run(params, reply = {}) {
   }
 
   const Zabbix = { log: (level, message) => logs.push({ level, message }) };
-  const fn = new Function('value', 'HttpRequest', 'Zabbix', SCRIPT);
+  const fn = new Function('value', 'HttpRequest', 'Zabbix', script);
   let result;
   let error;
   try {
@@ -73,27 +78,69 @@ test('is plain ES5, so Zabbix (Duktape) can run it', () => {
   assert.doesNotThrow(() => acorn.parse(`(function (value) {\n${SCRIPT}\n})`, { ecmaVersion: 5 }));
 });
 
-test('media_smstunnel.yaml is built from src/ and carries the same script', () => {
-  const file = readFileSync(join(root, 'media_smstunnel.yaml'), 'utf8').replace(/\r\n/g, '\n');
-  assert.equal(file, buildYaml());
-  const doc = yaml.load(file);
-  assert.equal(doc.zabbix_export.version, '7.0');
-  const media = doc.zabbix_export.media_types[0];
-  assert.equal(media.name, 'SMSTunnel');
-  assert.equal(media.type, 'WEBHOOK');
-  assert.equal(media.script, SCRIPT.replace(/\r\n/g, '\n'));
-  const params = Object.fromEntries(media.parameters.map((p) => [p.name, p.value]));
-  assert.equal(params.api_key, '{$SMSTUNNEL.API.KEY}');
-  assert.equal(params.send_to, '{ALERT.SENDTO}');
-  assert.equal(params.subject, '{ALERT.SUBJECT}');
-  assert.equal(params.message, '{ALERT.MESSAGE}');
-  assert.equal(params.tls_verify, '{$HTTP.TLS.VERIFY:"SMSTunnel"}');
-  assert.ok(!('server_url' in params), 'server_url stays out of the shipped parameters');
-  const modes = media.message_templates.map((t) => `${t.event_source}/${t.operation_mode}`);
-  for (const mode of ['TRIGGERS/PROBLEM', 'TRIGGERS/RECOVERY', 'TRIGGERS/UPDATE', 'SERVICE/PROBLEM']) {
-    assert.ok(modes.includes(mode), mode);
-  }
-  assert.doesNotMatch(file, /sk_live_[A-Za-z0-9]/, 'no key in the shipped file');
+for (const target of TARGETS) {
+  test(`${target.file} is built from src/, in the ${target.exportVersion} export format`, () => {
+    const file = loadFile(target);
+    assert.equal(file, buildYaml(target));
+    const doc = yaml.load(file, { schema: yaml.FAILSAFE_SCHEMA });
+    assert.equal(doc.zabbix_export.version, target.exportVersion);
+    // Zabbix 6.0 writes the export date; it must be quoted, or Zabbix's YAML reader turns it into a number.
+    assert.equal(doc.zabbix_export.date, target.date);
+    if (target.date) assert.match(file, new RegExp(`^  date: '${target.date}'$`, 'm'));
+    const media = doc.zabbix_export.media_types[0];
+    assert.equal(media.name, 'SMSTunnel');
+    assert.equal(media.type, 'WEBHOOK');
+    assert.equal(media.script, scriptFor(target));
+    assert.match(media.script, new RegExp(`version: '${VERSION.replace(/\./g, '\\.')}'`));
+    assert.ok(media.description.startsWith(`SMSTunnel for Zabbix ${VERSION} (${target.zabbix})`));
+    for (const path of [target.menu.macros, target.menu.users, target.menu.actions]) {
+      assert.ok(media.description.includes(path), `the description shows ${path}`);
+    }
+    const params = Object.fromEntries(media.parameters.map((p) => [p.name, p.value]));
+    assert.equal(params.api_key, '{$SMSTUNNEL.API.KEY}');
+    assert.equal(params.send_to, '{ALERT.SENDTO}');
+    assert.equal(params.subject, '{ALERT.SUBJECT}');
+    assert.equal(params.message, '{ALERT.MESSAGE}');
+    assert.equal(params.tls_verify, '{$HTTP.TLS.VERIFY:"SMSTunnel"}');
+    assert.ok(!('server_url' in params), 'server_url stays out of the shipped parameters');
+    const modes = media.message_templates.map((t) => `${t.event_source}/${t.operation_mode}`);
+    for (const mode of ['TRIGGERS/PROBLEM', 'TRIGGERS/RECOVERY', 'TRIGGERS/UPDATE', 'SERVICE/PROBLEM']) {
+      assert.ok(modes.includes(mode), mode);
+    }
+    assert.doesNotMatch(file, /sk_live_[A-Za-z0-9]/, 'no key in the shipped file');
+  });
+}
+
+test('the 7.0 file carries src/smstunnel.js as it is', () => {
+  assert.equal(scriptFor(V70), SCRIPT.replace(/\r\n/g, '\n'));
+  assert.equal(V60.date, `${RELEASE_DATE}T00:00:00Z`);
+});
+
+test('the 6.0 file is the same media type: only the export version, date and menu paths differ', () => {
+  const [m70, m60] = [V70, V60].map((t) => yaml.load(loadFile(t)).zabbix_export.media_types[0]);
+  const rest = ({ script, description, ...other }) => other;
+  assert.deepEqual(rest(m60), rest(m70));
+  const changed = (a, b) => a.split('\n').filter((line, i) => line !== b.split('\n')[i]);
+  assert.deepEqual(changed(m60.script, m70.script), [
+    `\tmacrosMenu: '${V60.menu.macros}',`,
+    `\tusersMenu: '${V60.menu.users}',`,
+  ]);
+});
+
+test('the 6.0 file\'s messages point at Zabbix 6.0\'s menus', () => {
+  const script = scriptFor(V60);
+  const noKey = String(run(base({ api_key: '{$SMSTUNNEL.API.KEY}' }), {}, script).error);
+  assert.match(noKey, /\(Administration > General > Macros, type "Secret text"\)/);
+  const noNumber = String(run(base({ send_to: '{ALERT.SENDTO}' }), {}, script).error);
+  assert.match(noNumber, /\(Administration > Users > the user > Media\)/);
+  const badKey = String(run(base(), { status: 401, body: { message: 'Invalid or expired API key' } }, script).error);
+  assert.match(badKey, /\{\$SMSTUNNEL\.API\.KEY\} \(Administration > General > Macros\) against Apps/);
+  assert.equal(run(base(), {}, script).body.to, '+14155550123');
+});
+
+test('the 7.0 file\'s messages point at Zabbix 7.0\'s menus', () => {
+  assert.match(String(run(base({ api_key: '' })).error), /\(Administration > Macros, type "Secret text"\)/);
+  assert.match(String(run(base({ send_to: '' })).error), /\(Users > Users > the user > Media\)/);
 });
 
 // Typical values, to see how long the shipped templates' texts are on a phone.
@@ -111,12 +158,16 @@ const SAMPLE = {
 const resolve = (text) => text.replace(/\{([A-Z.]+)\}/g, (all, name) => SAMPLE[name] ?? all);
 
 test('the shipped templates fit in one SMS (160 characters) with typical values', () => {
-  const media = yaml.load(readFileSync(join(root, 'media_smstunnel.yaml'), 'utf8')).zabbix_export.media_types[0];
-  for (const t of media.message_templates) {
-    const { body, error } = run(base({ subject: resolve(t.subject), message: resolve(t.message) }));
-    assert.equal(error, undefined);
-    assert.doesNotMatch(body.message, /\{[A-Z.]+\}/, `${t.event_source}/${t.operation_mode}: every macro has a sample`);
-    assert.ok(body.message.length <= 160, `${t.event_source}/${t.operation_mode}: ${body.message.length} chars`);
+  for (const target of TARGETS) {
+    const media = yaml.load(loadFile(target)).zabbix_export.media_types[0];
+    for (const t of media.message_templates) {
+      const { body, error } = run(base({ subject: resolve(t.subject), message: resolve(t.message) }), {},
+        scriptFor(target));
+      const where = `${target.file} ${t.event_source}/${t.operation_mode}`;
+      assert.equal(error, undefined);
+      assert.doesNotMatch(body.message, /\{[A-Z.]+\}/, `${where}: every macro has a sample`);
+      assert.ok(body.message.length <= 160, `${where}: ${body.message.length} chars`);
+    }
   }
 });
 
@@ -193,7 +244,7 @@ test('a missing key names the macro, and nothing is sent', () => {
     assert.match(String(error), /\{\$SMSTUNNEL\.API\.KEY\}/);
     assert.equal(calls.length, 0);
   }
-  assert.match(String(run(base({ api_key: 'sk_live_a\r\nX-Evil: 1' })).error), /line break/);
+  assert.match(String(run(base({ api_key: 'sk_' + 'live_' + 'a\r\nX-Evil: 1' })).error), /line break/);
 });
 
 test('checks "Send to": one phone number per media', () => {

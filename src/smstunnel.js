@@ -1,14 +1,19 @@
 /*
- * SMSTunnel for Zabbix 1.0.0: the webhook script of the "SMSTunnel" media type.
+ * SMSTunnel for Zabbix 1.1.0: the webhook script of the "SMSTunnel" media type.
  *
  * Sends each alert as a text to the user's "Send to" number, from your own Android phone and your own
  * number, through your SMSTunnel account (https://smstunnel.io). One text per alert, one recipient per call.
  *
  * Zabbix runs this in its JavaScript engine (Duktape, ES5): no let, arrow functions or template strings.
+ * media_smstunnel.yaml (Zabbix 7.0 and later) and media_smstunnel_6.0.yaml (Zabbix 6.0 LTS) carry the same
+ * script; only the two menu paths below differ.
  * Source and guide: https://github.com/narcisbodea/smstunnel-zabbix (MIT License).
  */
 var SMSTunnel = {
-	version: '1.0.0',
+	version: '1.1.0',
+	// Where the error messages send people in the Zabbix menu.
+	macrosMenu: 'Administration > Macros',
+	usersMenu: 'Users > Users',
 	defaultServerUrl: 'https://smstunnel.io',
 	sendPath: '/api/v1/sms/send',
 	defaultMaxLength: 320,
@@ -55,8 +60,8 @@ var SMSTunnel = {
 		var key = SMSTunnel.param(params, 'api_key');
 
 		if (key === '' || /^<.*>$/.test(key)) {
-			throw 'no API key. Add the global macro {$SMSTUNNEL.API.KEY} (Administration > Macros, type "Secret text")'
-				+ ' with the key from your SMSTunnel dashboard (Apps > Add an app). In the Test window you can'
+			throw 'no API key. Add the global macro {$SMSTUNNEL.API.KEY} (' + SMSTunnel.macrosMenu + ', type "Secret text")'
+				+ ' with the key from your SMSTunnel dashboard (Apps > Add an app > Zabbix). In the Test window you can'
 				+ ' type the key into api_key instead.';
 		}
 
@@ -73,8 +78,8 @@ var SMSTunnel = {
 
 		if (raw === '' || raw === '{ALERT.SENDTO}') {
 			throw 'no phone number. Give the user an SMSTunnel media with their number in "Send to"'
-				+ ' (Users > Users > the user > Media). In the Test window, type a number such as +14155550123'
-				+ ' into send_to.';
+				+ ' (' + SMSTunnel.usersMenu + ' > the user > Media). In the Test window, type a number such as'
+				+ ' +14155550123 into send_to.';
 		}
 
 		if (/[,;]/.test(raw)) {
@@ -113,8 +118,9 @@ var SMSTunnel = {
 		return url;
 	},
 
-	// Same switch as Zabbix's own media types: {$HTTP.TLS.VERIFY} = none, peer or full (the default).
-	// Zabbix 7.0.28+ / 7.4.12+ check the certificate with these options; older versions ignore them.
+	// Same switch as Zabbix 7.0's own media types: {$HTTP.TLS.VERIFY} = none, peer or full (the default).
+	// Zabbix 6.0.47+, 7.0.28+, 7.4.12+ and 8.0 check the certificate with these options; older releases ignore
+	// them and check nothing.
 	tlsOptions: function (params, url) {
 		var mode = (params.tls_verify === undefined || params.tls_verify === null)
 			? '' : String(params.tls_verify).trim().toLowerCase();
@@ -323,7 +329,7 @@ var SMSTunnel = {
 
 		if (status === 401) {
 			return 'the API key was not accepted (' + what + '). Check the macro {$SMSTUNNEL.API.KEY}'
-				+ ' (Administration > Macros) against Apps in your SMSTunnel dashboard.';
+				+ ' (' + SMSTunnel.macrosMenu + ') against Apps in your SMSTunnel dashboard.';
 		}
 
 		if (status === 403) {

@@ -1,6 +1,6 @@
 {
   "name": "smstunnel-zabbix",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "SMSTunnel for Zabbix: a webhook media type that texts each user's own number from your own Android phone.",
   "license": "MIT",
@@ -17,7 +17,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "check": "node scripts/build.mjs --check",
-    "test": "node scripts/build.mjs --check && node --test test/unit.test.mjs",
+    "test": "node scripts/build.mjs --check && node --test test/unit.test.mjs test/e2e/helpers.test.mjs",
     "e2e": "node test/e2e/e2e.mjs"
   },
   "devDependencies": {
