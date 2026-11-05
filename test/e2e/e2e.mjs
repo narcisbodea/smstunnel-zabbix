@@ -1,17 +1,22 @@
 #!/usr/bin/env node
 // End-to-end test of the SMSTunnel media type inside a real Zabbix (see docker-compose.yml next to this file).
 //
-// It imports media_smstunnel.yaml, adds a host with trapper items and triggers, gives two users an SMSTunnel
-// media, and fires real problems, an update, a recovery and failures. It checks what Zabbix recorded
-// (alert.get) and, when it can reach the test database, the texts SMSTunnel accepted.
+// It imports the media type (media_smstunnel.yaml, or media_smstunnel_6.0.yaml on Zabbix 6.0), adds a host
+// with trapper items and triggers, gives two users an SMSTunnel media, and fires real problems, an update, a
+// recovery and failures. It checks what Zabbix recorded (alert.get) and, when it can reach the test database,
+// the texts SMSTunnel accepted.
 //
 //   node test/e2e/e2e.mjs --zabbix http://127.0.0.1:8571 --key-file key.json \
 //     [--api-url http://host.docker.internal:3101] [--local-api http://127.0.0.1:3101] \
-//     [--mongo mongodb://127.0.0.1:27018/smstunnel_app_dev] [--mongo-driver D:/ANDROID/SMSserver/package.json] \
-//     [--server-container smst-int-zabbix70-server-1] [--tls-check] [--import-only]
+//     [--mongo mongodb://127.0.0.1:27018/smstunnel_zabbix_e2e_test] [--mongo-driver D:/ANDROID/SMSserver/package.json] \
+//     [--server-container smst-int-zabbix70-server-1] [--file media_smstunnel.yaml] [--trapper 127.0.0.1:10051] \
+//     [--tls-check] [--import-only]
 //
 // --tls-check adds certificate checks against public test hosts (badssl.com, with a dummy key);
 // --import-only stops after the import and export checks (handy for a development build of Zabbix).
+// --file picks the file to import; by default the one for the Zabbix version under test.
+// Zabbix 6.0 has no history.push: values go to the server's trapper port, found with `docker port` on
+// --server-container (docker-compose.yml publishes it on 127.0.0.1), or given with --trapper.
 //
 // key.json is {"apiKey": "..."} (or set SMSTUNNEL_API_KEY). Use a key of a local SMSTunnel test server only:
 // every text in this test goes to --api-url. Numbers used: +14155550123 and +14155550124.
@@ -20,10 +25,10 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
 import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
-import { ZabbixApi, sleep } from './zabbix-api.mjs';
+import { ZabbixApi, atLeast, senderPush, sleep } from './zabbix-api.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..', '..');
@@ -39,6 +44,12 @@ for (const url of [API_URL, LOCAL_API]) {
     process.exit(2);
   }
 }
+// The texts are read back (read-only) from the local test server's database: a *_test database only.
+const MONGO_URL = args.mongo || 'mongodb://127.0.0.1:27018/smstunnel_zabbix_e2e_test';
+if (!/^mongodb:\/\/[^/]+\/[A-Za-z0-9_-]+_test(\?.*)?$/.test(MONGO_URL)) {
+  console.error(`Refusing to read ${MONGO_URL}: give --mongo a *_test database of a local SMSTunnel test server.`);
+  process.exit(2);
+}
 const CONTAINER = args['server-container'] || '';
 const STUB_PORT = Number(args['stub-port'] || 8579);
 const NUMBER_ADMIN = '+14155550123';
@@ -46,7 +57,9 @@ const NUMBER_ONCALL = '+14155550124';
 const RUN = Date.now().toString(36);
 const HOST = `smstunnel-e2e-${RUN}`;
 const KEY = readKey();
-const BAD_KEY = 'sk_live_e2e_not_a_real_key_0000000000000';
+// Made-up keys, put together from pieces so that no key-shaped string sits in the repository.
+const BAD_KEY = ['sk', 'live', 'e2e', 'not', 'a', 'real', 'key', '0000000000000'].join('_');
+const DUMMY_KEY = ['sk', 'live', 'dummy', 'tls', 'check'].join('_');
 
 const api = new ZabbixApi(ZABBIX_URL);
 const results = [];
@@ -116,15 +129,35 @@ function media(sendto) {
   return { mediatypeid, sendto, active: 0, severity: 63, period: '1-7,00:00-24:00' };
 }
 
+// Where Zabbix 6.0's trapper listens: --trapper, or the port docker-compose.yml published for the server.
+let trapper;
+function trapperAddress() {
+  if (trapper) return trapper;
+  let text = args.trapper;
+  if (!text) {
+    if (!CONTAINER) throw new Error('Zabbix 6.0 has no history.push: give --server-container or --trapper host:port.');
+    text = docker('port', CONTAINER, '10051/tcp').split('\n').find((line) => line.startsWith('127.0.0.1:')) || '';
+  }
+  const match = /^(.+):(\d+)$/.exec(text.trim());
+  if (!match) throw new Error(`cannot tell where the trapper listens (${text || 'nothing published'})`);
+  trapper = { host: match[1], port: Number(match[2]) };
+  return trapper;
+}
+
 // Trapper values reach the trigger once the new item is in the configuration cache.
 async function push(key, value) {
   for (let i = 0; i < 40; i++) {
-    const result = await api.call('history.push', [{ host: HOST, key, value: String(value) }]);
-    const row = result?.data?.[0];
-    if (result?.response === 'success' && row && !row.error) return;
+    if (atLeast(api.version, '7.0')) {
+      const result = await api.call('history.push', [{ host: HOST, key, value: String(value) }]);
+      const row = result?.data?.[0];
+      if (result?.response === 'success' && row && !row.error) return;
+    } else {
+      const answer = await senderPush(trapperAddress(), { host: HOST, key, value: String(value) }).catch(() => null);
+      if (answer?.response === 'success' && /processed: 1;/.test(answer.info || '')) return;
+    }
     await sleep(3000);
   }
-  throw new Error(`history.push to ${key} kept failing`);
+  throw new Error(`sending a value to ${key} kept failing`);
 }
 
 async function waitEvent(triggerid, value, since, timeoutMs = 120000) {
@@ -170,7 +203,7 @@ async function openMongo() {
     } catch {
       driver = createRequire(args['mongo-driver'] || 'D:/ANDROID/SMSserver/package.json')('mongodb');
     }
-    const client = new driver.MongoClient(args.mongo || 'mongodb://127.0.0.1:27018/smstunnel_app_dev', {
+    const client = new driver.MongoClient(MONGO_URL, {
       serverSelectionTimeoutMS: 4000,
     });
     await client.connect();
@@ -240,7 +273,10 @@ function startFlakyStub() {
 
 async function main() {
   const version = await api.waitReady();
-  console.log(`Zabbix ${version} at ${ZABBIX_URL}; texts go to ${API_URL}; run ${RUN}`);
+  // Zabbix 6.0 imports only its own export format (or older ones): media_smstunnel_6.0.yaml.
+  const file = args.file ? resolve(args.file)
+    : join(root, atLeast(version, '7.0') ? 'media_smstunnel.yaml' : 'media_smstunnel_6.0.yaml');
+  console.log(`Zabbix ${version} at ${ZABBIX_URL}; file ${file}; texts go to ${API_URL}; run ${RUN}`);
   mongo = await openMongo();
 
   if (CONTAINER) {
@@ -252,8 +288,8 @@ async function main() {
   }
 
   // 1. Import, and compare with Zabbix's own export of what it imported.
-  const source = readFileSync(join(root, 'media_smstunnel.yaml'), 'utf8');
-  check('import media_smstunnel.yaml', await api.call('configuration.import', {
+  const source = readFileSync(file, 'utf8');
+  check(`import ${file.split(/[\\/]/).pop()}`, await api.call('configuration.import', {
     format: 'yaml', rules: { mediaTypes: { createMissing: true, updateExisting: true } }, source,
   }));
   const [mt] = await api.call('mediatype.get', { filter: { name: 'SMSTunnel' }, output: 'extend' });
@@ -262,8 +298,12 @@ async function main() {
   const exported = await api.call('configuration.export', { format: 'yaml', options: { mediaTypes: [mediatypeid] } });
   const ours = yaml.load(source).zabbix_export.media_types;
   const theirs = yaml.load(exported).zabbix_export.media_types;
+  // Zabbix 6.0 writes the time of the export as its date.
+  const undated = (text) => text.replace(/\r\n/g, '\n').replace(/^ {2}date: '[^']*'\n/m, '');
   check('Zabbix exports the same media type back', JSON.stringify(ours) === JSON.stringify(theirs),
-    exported === source ? 'byte-identical' : `export version ${yaml.load(exported).zabbix_export.version}`);
+    exported === source ? 'byte-identical'
+      : undated(exported) === undated(source) ? 'byte-identical apart from the export date'
+        : `export version ${yaml.load(exported).zabbix_export.version}`);
   check('imported options: 5 attempts, 30s apart, 30s timeout',
     mt.maxattempts === '5' && mt.attempt_interval === '30s' && mt.timeout === '30s',
     `${mt.maxattempts} / ${mt.attempt_interval} / ${mt.timeout}`);
@@ -289,8 +329,10 @@ async function main() {
       priority: 4, manual_close: 1, opdata: 'Value: {ITEM.LASTVALUE1}',
     })).triggerids[0];
   }
+  // Host group permissions are "hostgroup_rights" since Zabbix 6.2, "rights" before.
+  const rights = [{ id: groupid, permission: 2 }];
   const usrgrpid = (await api.call('usergroup.create', {
-    name: `SMSTunnel on-call ${RUN}`, hostgroup_rights: [{ id: groupid, permission: 2 }],
+    name: `SMSTunnel on-call ${RUN}`, ...(atLeast(version, '6.2') ? { hostgroup_rights: rights } : { rights }),
   })).usrgrpids[0];
   await api.call('user.update', { userid: '1', medias: [media(NUMBER_ADMIN)] });
   const oncall = (await api.call('user.create', {
@@ -415,7 +457,7 @@ async function main() {
       ['tls3', 'https://wrong.host.badssl.com', 'full', /SSL|certificate|host name|subject/i, 'wrong host refused (full)'],
     ];
     for (const [phase, url, mode, expected, label] of cases) {
-      await setParams({ server_url: url, api_key: 'sk_live_dummy_tls_check', tls_verify: mode });
+      await setParams({ server_url: url, api_key: DUMMY_KEY, tls_verify: mode });
       since = Math.floor(Date.now() / 1000) - 1;
       await push(`smstunnel.${phase}`, 1);
       const p = await waitEvent(triggers[phase], 1, since);

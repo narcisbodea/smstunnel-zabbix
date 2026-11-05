@@ -1,8 +1,10 @@
 # Throwaway Zabbix for the end-to-end test: server + web + PostgreSQL.
 #
+#   ZBX_VERSION=6.0 ZBX_WEB_PORT=8560 docker compose -p smst-int-zabbix60 -f test/e2e/docker-compose.yml up -d
 #   ZBX_VERSION=7.0 ZBX_WEB_PORT=8571 docker compose -p smst-int-zabbix70 -f test/e2e/docker-compose.yml up -d
 #   ZBX_VERSION=7.4 ZBX_WEB_PORT=8574 docker compose -p smst-int-zabbix74 -f test/e2e/docker-compose.yml up -d
-#   ZBX_TAG=trunk-alpine ZBX_WEB_PORT=8580 docker compose -p smst-int-zabbix80 -f test/e2e/docker-compose.yml up -d   (8.0 development build)
+#   ZBX_VERSION=8.0 ZBX_WEB_PORT=8580 docker compose -p smst-int-zabbix80 -f test/e2e/docker-compose.yml up -d
+#   ZBX_TAG=trunk-alpine ZBX_WEB_PORT=8590 docker compose -p smst-int-zabbix-trunk -f test/e2e/docker-compose.yml up -d   (development build)
 #
 # Web UI: http://127.0.0.1:<ZBX_WEB_PORT>/ (Admin / zabbix). Tear down with `down -v`.
 services:
@@ -30,6 +32,10 @@ services:
       ZBX_STARTALERTERS: "3"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # The trapper port on a free port of 127.0.0.1 (`docker port <server> 10051/tcp`): Zabbix 6.0 has no
+    # history.push, so the test sends its values there.
+    ports:
+      - "127.0.0.1::10051"
     depends_on:
       db:
         condition: service_healthy
