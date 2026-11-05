@@ -34,7 +34,7 @@ The menu paths are the same in Zabbix 7.0, 7.2, 7.4 and 8.0.
 ### 1. Your phone and an API key
 
 1. Install the [SMSTunnel app from Google Play](https://play.google.com/store/apps/details?id=io.smstunnel.app) on your Android phone and sign in. Sign in at [smstunnel.io](https://smstunnel.io) on your computer with the same account: the phone appears under **Phones** (you can also link it with the QR code from **Phones → Add phone**).
-2. In your [SMSTunnel dashboard](https://dashboard.smstunnel.io/apps), open **Apps → Add an app**, pick **Script or server**, name it *Zabbix* and click **Create the key**. Copy the key: it is shown only once. It can send texts and look up whether they went out (leave **Can also read received texts** off; Zabbix doesn't need it).
+2. In your [SMSTunnel dashboard](https://dashboard.smstunnel.io/apps), open **Apps → Add an app**, pick **Zabbix** and click **Create the key**. Copy the key: it is shown only once. It can send texts and look up whether they went out (leave **Can also read received texts** off; Zabbix doesn't need it).
 
 The Zabbix server (not a Zabbix proxy) sends the alerts, so it needs to reach `https://smstunnel.io` on port 443, directly or through an HTTP proxy (see `http_proxy` below).
 
